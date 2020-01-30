@@ -1,6 +1,4 @@
-"""
-Code for question 1 of the assignment.
-"""
+""" TGARCH estimation """
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,17 +11,3 @@ dta = dta[['Unnamed: 0', 'Symbol', 'open_to_close', 'rv5', 'bv', 'rk_parzen']]
 dta = dta[dta.Symbol.eq(index)]
 dta.columns = ['date', 'S', 'r', 'rv', 'bv', 'rk']
 
-print(dta.shape)
-print(np.mean(np.abs(np.divide(dta.r, np.sqrt(dta.bv))) > 1.96))
-# Jumps 11% of the time, 11% of 5062 days
-
-
-print(np.mean(dta.rv))
-print(np.mean(dta.bv))
-print(np.mean(dta.rk))
-
-# quit()
-
-# fig = plt.figure()
-dta[['rv', 'bv', 'rk']].plot(alpha=0.5, subplots=True, sharey=True)
-plt.show()
