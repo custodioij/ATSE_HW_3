@@ -26,3 +26,5 @@ print(np.mean(dta.rk))
 # fig = plt.figure()
 dta[['rv', 'bv', 'rk']].plot(alpha=0.5, subplots=True, sharey=True)
 plt.show()
+
+print('hi masha')
