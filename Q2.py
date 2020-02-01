@@ -5,10 +5,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
+from arch import arch_model
 
 
 def f_s2t(omega, alpha, gamma, beta, x0, s20):
-    var = omega + ((alpha + gamma*np.float(x0 <= 0))*(x0**2)) + (beta*s20)
+    var = omega + ((alpha+gamma*np.float(x0 < 0))*(x0**2)) + (beta*s20)
     # print((omega, alpha, gamma, beta, x0, s20))
     if var < 0:
         print('NEGATIVE VARIANCE')
@@ -34,7 +35,7 @@ def ll(s2t, xt):
 def avg_ll(xx, omega, alpha, gamma, beta):
     l_s2 = build_s2(xx, omega, alpha, gamma, beta)
     LL = np.average([ll(l_s2[i], xx[i]) for i in range(len(xx))])
-    print(LL)
+    #print(LL)
     return -LL
 
 
@@ -98,3 +99,7 @@ res = MLE(XX)
 
 print(res)
 
+
+model = arch_model(100*dta.r,mean='Zero', p=1, q=1, o=1)
+result = model.fit(disp='off')
+print(result.summary())
