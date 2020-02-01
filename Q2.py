@@ -6,7 +6,7 @@ import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
-from arch import arch_model
+#from arch import arch_model
 
 
 def acf(x, h):
@@ -14,7 +14,9 @@ def acf(x, h):
     xbar = np.average(x)
     xvar = np.sum([(xi-xbar)**2 for xi in x])
     x0 = x[0:n-h]
+    print(np.shape(x0))
     x1 = x[h:n]
+    print(np.shape(x1))
     xcov = np.sum([(x0[i]-xbar)*(x1[i]-xbar) for i in range(len(x0))])
     return xcov/xbar
 
