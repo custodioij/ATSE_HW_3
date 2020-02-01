@@ -3,9 +3,27 @@ Sorry for the bad notation.
 """
 import pandas as pd
 import numpy as np
+from scipy import stats
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
 from arch import arch_model
+
+
+def acf(x, h):
+    n = len(x)
+    xbar = np.average(x)
+    xvar = np.sum([(xi-xbar)**2 for xi in x])
+    x0 = x[0:n-h]
+    x1 = x[h:n]
+    xcov = np.sum([(x0[i]-xbar)*(x1[i]-xbar) for i in range(len(x0))])
+    return xcov/xbar
+
+
+def Qstat(x, m):
+    n = len(x)
+    Q = np.sum([(acf(x, i) ** 2) / (n - i) for i in range(1, m + 1)]) * n * (n + 2)
+    pval = 1 - stats.chi2.cdf(Q, m)
+    return Q, pval
 
 
 def f_s2t(omega, alpha, gamma, beta, x0, s20):
@@ -35,7 +53,7 @@ def ll(s2t, xt):
 def avg_ll(xx, omega, alpha, gamma, beta):
     l_s2 = build_s2(xx, omega, alpha, gamma, beta)
     LL = np.average([ll(l_s2[i], xx[i]) for i in range(len(xx))])
-    #print(LL)
+    print(LL)
     return -LL
 
 
@@ -54,13 +72,13 @@ cons = [{'type': 'ineq', 'fun': lambda theta:  theta[1] + (theta[2]/2) + theta[3
 # x: array([ 2.14681928e-06, -8.00922261e-03,  1.75349404e-01,  8.96252110e-01])
 
 
-def MLE(xx, theta0=(0.1, 0.25, 0.9, 0.2)):
+def MLE(xx, theta0=(0.6, 0.25, 0.9, 0.2)):
     res = opt.minimize(lambda theta: avg_ll(xx, theta[0], theta[1], theta[2], theta[3]), theta0,
                         # method='Nelder-Mead')
                         # method='BFGS')
                         method='SLSQP',
                         constraints=cons,
-                        bounds=[(-1e10, 10.0),(-1.0, 10.0),(0.0, 10.0), (0.0, 10.0)])
+                        bounds=[(0, 10.0),(0, 10.0),(0, 10.0), (0, 10.0)])
     # res = opt.fmin_slsqp(lambda theta: avg_ll(xx, theta[0], theta[1], theta[2], theta[3]), theta0,
     #                      f_ieqcons=lambda theta:  (1 - (theta[1] + (theta[2]/2) + theta[3])),
     #                      bounds=[(0.001, 10.0),(0.0, 1.0),(0.0, 1.0), (0.0, 1.0)])
@@ -74,12 +92,10 @@ def MLE(xx, theta0=(0.1, 0.25, 0.9, 0.2)):
 # alpha = 0.2
 # beta = 0.6
 # gamma = 0.1
-# # l_s2 = build_s2(xx, omega=omega, alpha=alpha, gamma=gamma, beta=beta)
-# LL = avg_ll(xx, omega, alpha, gamma, beta)
-# print(LL)
-# mle = MLE(xx)
-# print(mle)
-#
+# l_s2 = build_s2(xx, omega=omega, alpha=alpha, gamma=gamma, beta=beta)
+
+# acf(xx, 2)
+# print(Qstat(xx, 3))
 # quit()
 
 """ Actual estimation """
@@ -92,12 +108,21 @@ dta = dta[dta.Symbol.eq(index)]
 dta.columns = ['date', 'S', 'r', 'rv', 'bv', 'rk']
 
 XX = list(dta.r)
-# XX = [x+1 for x in XX]
-# print(np.var(XX))
-# XX
+XX = [x*100 for x in XX]
 res = MLE(XX)
 
 print(res)
+
+# Get fitted value of sigma2:
+fitted_s2 = build_s2(XX, res.x[0], res.x[1], res.x[2], res.x[3])
+fitted_Z = [XX[i]/np.sqrt(fitted_s2[i]) for i in range(len(XX))]
+fitted_Z2 = [Z**2 for Z in fitted_Z]
+
+pvals_Z = [Qstat(fitted_Z, m+1) for m in range(10)]
+pvals_Z2 = [Qstat(fitted_Z2, m+1) for m in range(10)]
+
+print(pvals_Z)
+print(pvals_Z2)
 
 
 model = arch_model(100*dta.r,mean='Zero', p=1, q=1, o=1)
