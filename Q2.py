@@ -6,28 +6,34 @@ import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
-#from arch import arch_model
+from arch import arch_model
+from statsmodels.tsa.stattools import acf
 
 
+
+
+#%%
 def acf(x, h):
     n = len(x)
     xbar = np.average(x)
     xvar = np.sum([(xi-xbar)**2 for xi in x])
     x0 = x[0:n-h]
+    x1 = x[h:]
     print(np.shape(x0))
-    x1 = x[h:n]
     print(np.shape(x1))
     xcov = np.sum([(x0[i]-xbar)*(x1[i]-xbar) for i in range(len(x0))])
-    return xcov/xbar
-
-
+    return xcov/xvar
+#%%
 def Qstat(x, m):
+    print('Q test')
     n = len(x)
     Q = np.sum([(acf(x, i) ** 2) / (n - i) for i in range(1, m + 1)]) * n * (n + 2)
+    print(Q)
     pval = 1 - stats.chi2.cdf(Q, m)
     return Q, pval
 
 
+#%%
 def f_s2t(omega, alpha, gamma, beta, x0, s20):
     var = omega + ((alpha+gamma*np.float(x0 < 0))*(x0**2)) + (beta*s20)
     # print((omega, alpha, gamma, beta, x0, s20))
@@ -116,17 +122,20 @@ res = MLE(XX)
 print(res)
 
 # Get fitted value of sigma2:
+#%%
+
 fitted_s2 = build_s2(XX, res.x[0], res.x[1], res.x[2], res.x[3])
 fitted_Z = [XX[i]/np.sqrt(fitted_s2[i]) for i in range(len(XX))]
 fitted_Z2 = [Z**2 for Z in fitted_Z]
-
 pvals_Z = [Qstat(fitted_Z, m+1) for m in range(10)]
 pvals_Z2 = [Qstat(fitted_Z2, m+1) for m in range(10)]
+#%%
 
 print(pvals_Z)
 print(pvals_Z2)
 
-
-model = arch_model(100*dta.r,mean='Zero', p=1, q=1, o=1)
-result = model.fit(disp='off')
-print(result.summary())
+nlags = 20
+autocorr =  [pd.Series(fitted_Z2).autocorr(lag) for lag in range(nlags)]
+#model = arch_model(100*dta.r,mean='Zero', p=1, q=1, o=1)
+#result = model.fit(disp='off')
+#print(result.summary())
