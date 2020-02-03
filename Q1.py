@@ -31,7 +31,9 @@ dta.columns = ['date', 'S', 'r', 'rv', 'bv', 'rk']
 
 # fig = plt.figure()
 dta[['rv', 'bv', 'rk']].plot(alpha=0.5, subplots=True, sharey=True)
-plt.show(
+# plt.show()
+plt.savefig('Q1.png')  # TODO: change x-labels to date (don't know how).
+quit()
 
 
 def volatility(theta, x, h, rv):

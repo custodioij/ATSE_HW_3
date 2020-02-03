@@ -8,49 +8,44 @@ import matplotlib.pyplot as plt
 import scipy.optimize as opt
 from arch import arch_model
 from arch.univariate import EGARCH
-from statsmodels.tsa.stattools import acf
 
 
-
-
-#%%
 def acf(x, h):
     n = len(x)
     xbar = np.average(x)
     xvar = np.sum([(xi-xbar)**2 for xi in x])
     x0 = x[0:n-h]
-    x1 = x[h:]
+    x1 = x[h:n]
     xcov = np.sum([(x0[i]-xbar)*(x1[i]-xbar) for i in range(len(x0))])
     return xcov/xvar
 
-#%%
+
 def Qstat(x, m):
-    # print('Q test')
     n = len(x)
     Q = np.sum([(acf(x, i) ** 2) / (n - i) for i in range(1, m + 1)]) * n * (n + 2)
-    # print(Q)
     pval = 1 - stats.chi2.cdf(Q, m)
     return Q, pval
 
 
-#%%
-def f_s2t(omega, alpha, gamma, beta, x0, s20):
-    var = omega + ((alpha+gamma*np.float(x0 < 0))*(x0**2)) + (beta*s20)
+def f_s2t(omega, alpha, gamma, beta, beta2, x0, s20, rv0):
+    var = omega + ((alpha+gamma*np.float(x0 < 0))*(x0**2)) + (beta*s20) + (beta2*rv0)
     # print((omega, alpha, gamma, beta, x0, s20))
     if var < 0:
         print('NEGATIVE VARIANCE')
     return var
 
 
-def build_s2(xx, omega, alpha, gamma, beta):  #**kwargs):
+def build_s2(xx, rv, omega, alpha, gamma, beta, beta2):  #**kwargs):
     # xx: list
     # Initial value:
     xx2 = [x**2 for x in xx]
     l_s2 = [np.average(xx2)]
+    # l_s2 = [omega/(1-alpha-beta - (0.5*gamma))]
+    # l_s2 = [xx[0]**2]
     for i in range(len(xx)-1):
         # if l_s2[i] == np.inf:
         #     print(omega, alpha, gamma, beta, xx[i], l_s2[i])
-        l_s2 += [f_s2t(omega, alpha, gamma, beta, xx[i], l_s2[i])]  # **kwargs)]
+        l_s2 += [f_s2t(omega, alpha, gamma, beta, beta2, xx[i], l_s2[i], rv[i])]  # **kwargs)]
     return l_s2
 
 
@@ -58,8 +53,8 @@ def ll(s2t, xt):
     return -np.log(s2t) - ((xt**2)/s2t)
 
 
-def avg_ll(xx, omega, alpha, gamma, beta):
-    l_s2 = build_s2(xx, omega, alpha, gamma, beta)
+def avg_ll(xx, rv, omega, alpha, gamma, beta, beta2):
+    l_s2 = build_s2(xx, rv, omega, alpha, gamma, beta, beta2)
     LL = np.average([ll(l_s2[i], xx[i]) for i in range(len(xx))])
     # print(LL)
     return -LL
@@ -80,13 +75,13 @@ cons = [{'type': 'ineq', 'fun': lambda theta:  theta[1] + (theta[2]/2) + theta[3
 # x: array([ 2.14681928e-06, -8.00922261e-03,  1.75349404e-01,  8.96252110e-01])
 
 
-def MLE(xx, theta0=(0.6, 0.25, 0.9, 0.2)):
-    res = opt.minimize(lambda theta: avg_ll(xx, theta[0], theta[1], theta[2], theta[3]), theta0,
+def MLE(xx, rv, theta0=(0.1, 0.2, 0.2, 0.5, 0.3)):
+    res = opt.minimize(lambda theta: avg_ll(xx, rv, theta[0], theta[1], theta[2], theta[3], theta[4]), theta0,
                         # method='Nelder-Mead')
                         # method='BFGS')
                         method='SLSQP',
                         constraints=cons,
-                        bounds=[(0, 10.0),(0, 10.0),(0, 10.0), (0, 10.0)])
+                        bounds=[(0.0, 10.0),(0.0, 10.0),(0.0, 10.0), (0.0, 10.0), (None, None)])
     # res = opt.fmin_slsqp(lambda theta: avg_ll(xx, theta[0], theta[1], theta[2], theta[3]), theta0,
     #                      f_ieqcons=lambda theta:  (1 - (theta[1] + (theta[2]/2) + theta[3])),
     #                      bounds=[(0.001, 10.0),(0.0, 1.0),(0.0, 1.0), (0.0, 1.0)])
@@ -116,61 +111,23 @@ dta = dta[dta.Symbol.eq(index)]
 dta.columns = ['date', 'S', 'r', 'rv', 'bv', 'rk']
 
 XX = list(dta.r)
+rv = list(dta.rv * 100)
 XX = [x*100 for x in XX]
-res = MLE(XX)
+res = MLE(XX, rv)
 
 print(res)
 
 # Get fitted value of sigma2:
-#%%
-
-fitted_s2 = build_s2(XX, res.x[0], res.x[1], res.x[2], res.x[3])
+fitted_s2 = build_s2(XX, rv, res.x[0], res.x[1], res.x[2], res.x[3], res.x[4])
 fitted_Z = [XX[i]/np.sqrt(fitted_s2[i]) for i in range(len(XX))]
 fitted_absZ = [abs(Z) for Z in fitted_Z]
 fitted_Z2 = [Z**2 for Z in fitted_Z]
-pvals_Z = [Qstat(fitted_Z, m+1) for m in range(10)]
-pvals_Z2 = [Qstat(fitted_Z2, m+1) for m in range(10)]
-#%%
+
+pvals_Z = [Qstat(fitted_Z, m+1)[1] for m in range(10)]
+pvals_absZ = [Qstat(fitted_absZ, m+1)[1] for m in range(10)]
+pvals_Z2 = [Qstat(fitted_Z2, m+1)[1] for m in range(10)]
 
 print(pvals_Z)
 print(pvals_absZ)
 print(pvals_Z2)
 
-
-nlags = 20
-autocorr =  [pd.Series(fitted_Z2).autocorr(lag) for lag in range(nlags)]
-
-
-model = arch_model(100*dta.r,mean='Zero', p=1, q=1, o=1)
-result = model.fit(disp='off')
-print(result.summary())
-# result.aic
-l_result = [arch_model(100*dta.r,mean='Zero', p=i, q=1, o=1).fit(disp='off').bic for i in range(1, 5)]
-
-
-model = arch_model(100*dta.r, p=1, q=1, o=1, dist='t') #mean='Zero' dist='StudentsT',
-result = model.fit(disp='off')
-print(result.summary())
-residuals = list(result.std_resid)
-
-pvals_resid = [Qstat(residuals, m+1)[1] for m in range(10)]
-print(pvals_resid)
-
-print(stats.jarque_bera(residuals))
-print(stats.kstest(residuals, 't', args=(10, )))
-
-# plt.hist(residuals, 100)
-stats.probplot(residuals, dist='t', plot=plt, sparams=(10,))
-plt.show()
-
-stats.probplot(residuals, dist='norm', plot=plt)
-plt.show()
-
-# egarch = EGARCH(, p=1, o=1, q=1)
-
-l_result_norm_t = [arch_model(100*dta.r, dist=i, p=1, q=1, o=1).fit(disp='off').bic for i in ['Normal', 't']]
-
-
-model = arch_model(100*dta.r, x=dta.rv, mean='Constant', p=1, q=1, o=0, dist='t') #mean='Zero' dist='StudentsT',
-result = model.fit(disp='off')
-print(result.summary())
