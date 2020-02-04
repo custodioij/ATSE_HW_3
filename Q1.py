@@ -9,6 +9,7 @@ import math as math
 from scipy. stats import kstest
 import scipy.stats as stats
 from scipy.special import gamma
+import pickle
 
 
 # print(csv.reader(open('oxfordmanrealizedvolatilityindices.csv', 'rb')))
@@ -32,8 +33,8 @@ dta.columns = ['date', 'S', 'r', 'rv', 'bv', 'rk']
 # fig = plt.figure()
 dta[['rv', 'bv', 'rk']].plot(alpha=0.5, subplots=True, sharey=True)
 # plt.show()
-plt.savefig('Q1.png')  # TODO: change x-labels to date (don't know how).
-quit()
+# plt.savefig('Q1.png')  # TODO: change x-labels to date (don't know how).
+# quit()
 
 
 def volatility(theta, x, h, rv):
@@ -75,6 +76,15 @@ dist = 't'
 results = opt.minimize(garch2, theta_ini, args=(dta1*100, dist), method='SLSQP', constraints=cons,
                        bounds=[(0, 10), (0, 10), (0.0, 10), (0, 10), (-100.0, 100.0), (2, 200)])
 print(results)
+
+h_hat_Q3 = filter(dta1*100, results.x)
+with open("h_hat_Q3.txt", "wb") as fp:   #Pickling
+    pickle.dump(h_hat_Q3, fp)
+
+print('Normal:')
+results_n = opt.minimize(garch2, theta_ini, args=(dta1*100, 'norm'), method='SLSQP', constraints=cons,
+                       bounds=[(0, 10), (0, 10), (0.0, 10), (0, 10), (-100.0, 100.0), (2, 200)])
+print(results_n)
 
 sigma2 = filter(dta1*100, results.x)
 resid = dta1[100:,0]/np.sqrt(sigma2[100:-1])

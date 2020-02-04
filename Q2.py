@@ -9,7 +9,7 @@ import scipy.optimize as opt
 from arch import arch_model
 from arch.univariate import EGARCH
 from statsmodels.tsa.stattools import acf
-
+import pickle
 
 
 
@@ -129,6 +129,7 @@ fitted_Z = [XX[i]/np.sqrt(fitted_s2[i]) for i in range(len(XX))]
 fitted_absZ = [abs(Z) for Z in fitted_Z]
 fitted_Z2 = [Z**2 for Z in fitted_Z]
 pvals_Z = [Qstat(fitted_Z, m+1) for m in range(10)]
+pvals_absZ = [Qstat(fitted_absZ, m+1) for m in range(10)]
 pvals_Z2 = [Qstat(fitted_Z2, m+1) for m in range(10)]
 #%%
 
@@ -136,14 +137,22 @@ print(pvals_Z)
 print(pvals_absZ)
 print(pvals_Z2)
 
+with open("h_hat_Q2.txt", "wb") as fp:   #Pickling
+    pickle.dump(fitted_s2, fp)
+
+plt.plot([i+1 for i in range(len(fitted_s2))], fitted_s2)
+plt.savefig('fitted_h.png')
+plt.clf()
+
 
 nlags = 20
-autocorr =  [pd.Series(fitted_Z2).autocorr(lag) for lag in range(nlags)]
+autocorr = [pd.Series(fitted_Z2).autocorr(lag) for lag in range(nlags)]
 
 
-model = arch_model(100*dta.r,mean='Zero', p=1, q=1, o=1)
+model = arch_model(100*dta.r, mean='Zero', p=1, q=1, o=1)
 result = model.fit(disp='off')
 print(result.summary())
+
 # result.aic
 l_result = [arch_model(100*dta.r,mean='Zero', p=i, q=1, o=1).fit(disp='off').bic for i in range(1, 5)]
 
@@ -156,15 +165,22 @@ residuals = list(result.std_resid)
 pvals_resid = [Qstat(residuals, m+1)[1] for m in range(10)]
 print(pvals_resid)
 
+print('JARQUE-BERA:')
 print(stats.jarque_bera(residuals))
 print(stats.kstest(residuals, 't', args=(10, )))
 
+# fig, ax = plt.subplots()
 # plt.hist(residuals, 100)
 stats.probplot(residuals, dist='t', plot=plt, sparams=(10,))
-plt.show()
+plt.savefig('Q2_QQ_t.png')
+# plt.show()
 
+plt.clf()
 stats.probplot(residuals, dist='norm', plot=plt)
-plt.show()
+# ax.get_lines()[0].set_marker('p')
+# ax.get_lines()[0].set_markerfacecolor('r')
+plt.savefig('Q2_QQ_norm.png')
+# plt.show()
 
 # egarch = EGARCH(, p=1, o=1, q=1)
 
