@@ -86,6 +86,9 @@ results_n = opt.minimize(garch2, theta_ini, args=(dta1*100, 'norm'), method='SLS
                        bounds=[(0, 10), (0, 10), (0.0, 10), (0, 10), (-100.0, 100.0), (2, 200)])
 print(results_n)
 
+with open("Q3_LL.txt", "wb") as fp:   #Pickling
+    pickle.dump(results_n.fun, fp)
+
 sigma2 = filter(dta1*100, results.x)
 resid = dta1[100:,0]/np.sqrt(sigma2[100:-1])
 plt.plot(resid)

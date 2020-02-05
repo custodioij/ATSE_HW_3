@@ -61,6 +61,7 @@ def ll(s2t, xt):
 def avg_ll(xx, omega, alpha, gamma, beta):
     l_s2 = build_s2(xx, omega, alpha, gamma, beta)
     LL = np.average([ll(l_s2[i], xx[i]) for i in range(len(xx))])
+    LL = (-0.5 * np.log(2 * np.pi)) + 0.5 * LL
     # print(LL)
     return -LL
 
@@ -120,6 +121,10 @@ XX = [x*100 for x in XX]
 res = MLE(XX)
 
 print(res)
+
+
+with open("Q2_LL.txt", "wb") as fp:   #Pickling
+    pickle.dump(res.fun*(len(XX)-1), fp)
 
 # Get fitted value of sigma2:
 #%%

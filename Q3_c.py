@@ -33,3 +33,13 @@ plt.savefig('Q3_c.png')
 mse_2 = np.mean([(h_TGARCH[i] - rv[i]) ** 2 for i in range(len(rv))])
 mse_3 = np.mean([(h_realized[i] - rv[i]) ** 2 for i in range(len(rv))])
 
+
+""" LL ratio """
+
+with open("Q2_LL.txt", "rb") as fp:   # Unpickling
+    LL_2 = pickle.load(fp)  # Constrained
+
+with open("Q3_LL.txt", "rb") as fp:   # Unpickling
+    LL_3 = pickle.load(fp)  # Unconstrained
+
+LR = (LL_2 - LL_3)*2
